@@ -1,0 +1,21 @@
+#!/bin/bash
+
+set -e
+
+exec 3>&1 # make stdout available as fd 3 for the result
+exec 1>&2 # redirect all output to stderr for logging
+
+source_dir=${1}
+
+# Parse input JSON
+payload=$(mktemp /tmp/resource-out.XXXXXX)
+cat > "${payload}" <&0
+
+echo "steamcmd-resource does not support put operations" >&2
+echo "This resource is designed for detecting new game versions only" >&2
+
+# Clean up
+rm -f "${payload}"
+
+# Return empty version as this operation is not supported
+echo '{"version": {}}' >&3
