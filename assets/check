@@ -9,20 +9,20 @@ source_dir=${1}
 
 # Parse input JSON
 payload=$(mktemp /tmp/resource-in.XXXXXX)
-cat > "${payload}" <&0
+cat >"${payload}" <&0
 
 # Extract configuration
-app_id=$(jq -r '.source.app_id // empty' < "${payload}")
-branch=$(jq -r '.source.branch // "public"' < "${payload}")
-username=$(jq -r '.source.username // empty' < "${payload}")
-password=$(jq -r '.source.password // empty' < "${payload}")
+app_id=$(jq -r '.source.app_id // empty' <"${payload}")
+branch=$(jq -r '.source.branch // "public"' <"${payload}")
+username=$(jq -r '.source.username // empty' <"${payload}")
+password=$(jq -r '.source.password // empty' <"${payload}")
 
 # Extract version history
-version=$(jq -r '.version.buildid // empty' < "${payload}")
+version=$(jq -r '.version.buildid // empty' <"${payload}")
 
 if [[ -z "${app_id}" ]]; then
-  echo "Missing required source configuration: app_id"
-  exit 1
+    echo "Missing required source configuration: app_id"
+    exit 1
 fi
 
 echo "Checking Steam app ${app_id} on branch ${branch}" >&2
@@ -30,14 +30,14 @@ echo "Checking Steam app ${app_id} on branch ${branch}" >&2
 # Prepare SteamCMD login arguments
 login_args=""
 if [[ -n "${username}" && -n "${password}" ]]; then
-  login_args="login ${username} ${password}"
+    login_args="login ${username} ${password}"
 else
-  login_args="login anonymous"
+    login_args="login anonymous"
 fi
 
 # Create SteamCMD script
 steamcmd_script=$(mktemp /tmp/steamcmd-script.XXXXXX)
-cat > "${steamcmd_script}" << EOF
+cat >"${steamcmd_script}" <<EOF
 ${login_args}
 app_info_print ${app_id}
 quit
@@ -45,26 +45,26 @@ EOF
 
 echo "Running SteamCMD to get app info..." >&2
 
-# Run SteamCMD as steam user and capture output
+# Run SteamCMD directly (no user switching needed in container)
 steamcmd_output=$(mktemp /tmp/steamcmd-output.XXXXXX)
-su - steam -c "steamcmd +runscript ${steamcmd_script}" > "${steamcmd_output}" 2>&1 || true
+steamcmd +runscript "${steamcmd_script}" >"${steamcmd_output}" 2>&1 || true
 
 # Extract build ID from SteamCMD output
 current_buildid=""
 if grep -q "\"${app_id}\"" "${steamcmd_output}"; then
-  # Parse the app info to extract build ID for the specified branch
-  current_buildid=$(grep -A 200 "\"branches\"" "${steamcmd_output}" | \
-                   grep -A 20 "\"${branch}\"" | \
-                   grep "\"buildid\"" | \
-                   head -n1 | \
-                   sed 's/.*"buildid"[[:space:]]*"\([^"]*\)".*/\1/')
+    # Parse the app info to extract build ID for the specified branch
+    current_buildid=$(grep -A 200 "\"branches\"" "${steamcmd_output}" |
+        grep -A 20 "\"${branch}\"" |
+        grep "\"buildid\"" |
+        head -n1 |
+        sed 's/.*"buildid"[[:space:]]*"\([^"]*\)".*/\1/')
 fi
 
 if [[ -z "${current_buildid}" ]]; then
-  echo "Could not determine build ID for app ${app_id} on branch ${branch}" >&2
-  echo "SteamCMD output:" >&2
-  cat "${steamcmd_output}" >&2
-  exit 1
+    echo "Could not determine build ID for app ${app_id} on branch ${branch}" >&2
+    echo "SteamCMD output:" >&2
+    cat "${steamcmd_output}" >&2
+    exit 1
 fi
 
 echo "Current build ID: ${current_buildid}" >&2
@@ -74,16 +74,16 @@ rm -f "${payload}" "${steamcmd_script}" "${steamcmd_output}"
 
 # If no previous version, return current version
 if [[ -z "${version}" ]]; then
-  echo "No previous version found, returning current version" >&2
-  jq -n --arg buildid "${current_buildid}" '[{"buildid": $buildid}]' >&3
-  exit 0
+    echo "No previous version found, returning current version" >&2
+    jq -n --arg buildid "${current_buildid}" '[{"buildid": $buildid}]' >&3
+    exit 0
 fi
 
 # If version hasn't changed, return empty array
 if [[ "${version}" == "${current_buildid}" ]]; then
-  echo "No new version found (current: ${current_buildid})" >&2
-  echo "[]" >&3
-  exit 0
+    echo "No new version found (current: ${current_buildid})" >&2
+    echo "[]" >&3
+    exit 0
 fi
 
 # Return new version

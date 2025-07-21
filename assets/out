@@ -9,7 +9,7 @@ source_dir=${1}
 
 # Parse input JSON
 payload=$(mktemp /tmp/resource-out.XXXXXX)
-cat > "${payload}" <&0
+cat >"${payload}" <&0
 
 echo "steamcmd-resource does not support put operations" >&2
 echo "This resource is designed for detecting new game versions only" >&2

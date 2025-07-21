@@ -9,37 +9,36 @@ destination_dir=${1}
 
 # Parse input JSON
 payload=$(mktemp /tmp/resource-in.XXXXXX)
-cat > "${payload}" <&0
+cat >"${payload}" <&0
 
 # Extract configuration and version
-app_id=$(jq -r '.source.app_id // empty' < "${payload}")
-branch=$(jq -r '.source.branch // "public"' < "${payload}")
-username=$(jq -r '.source.username // empty' < "${payload}")
-password=$(jq -r '.source.password // empty' < "${payload}")
-buildid=$(jq -r '.version.buildid // empty' < "${payload}")
+app_id=$(jq -r '.source.app_id // empty' <"${payload}")
+branch=$(jq -r '.source.branch // "public"' <"${payload}")
+username=$(jq -r '.source.username // empty' <"${payload}")
+password=$(jq -r '.source.password // empty' <"${payload}")
+buildid=$(jq -r '.version.buildid // empty' <"${payload}")
 
 if [[ -z "${app_id}" || -z "${buildid}" ]]; then
-  echo "Missing required configuration: app_id and buildid"
-  exit 1
+    echo "Missing required configuration: app_id and buildid"
+    exit 1
 fi
 
 echo "Fetching metadata for Steam app ${app_id}, build ${buildid}" >&2
 
-# Create destination directory if it doesn't exist and ensure proper permissions
+# Create destination directory if it doesn't exist
 mkdir -p "${destination_dir}"
-chmod 755 "${destination_dir}"
 
 # Prepare SteamCMD login arguments
 login_args=""
 if [[ -n "${username}" && -n "${password}" ]]; then
-  login_args="login ${username} ${password}"
+    login_args="login ${username} ${password}"
 else
-  login_args="login anonymous"
+    login_args="login anonymous"
 fi
 
 # Create SteamCMD script
 steamcmd_script=$(mktemp /tmp/steamcmd-script.XXXXXX)
-cat > "${steamcmd_script}" << EOF
+cat >"${steamcmd_script}" <<EOF
 ${login_args}
 app_info_print ${app_id}
 quit
@@ -47,22 +46,21 @@ EOF
 
 echo "Running SteamCMD to get detailed app info..." >&2
 
-# Run SteamCMD as steam user and capture output
 steamcmd_output=$(mktemp /tmp/steamcmd-output.XXXXXX)
-su - steam -c "steamcmd +runscript ${steamcmd_script}" > "${steamcmd_output}" 2>&1 || true
+steamcmd +runscript "${steamcmd_script}" >"${steamcmd_output}" 2>&1 || true
 
 # Extract app information
 app_name=""
 if grep -q "\"${app_id}\"" "${steamcmd_output}"; then
-  app_name=$(grep "\"name\"" "${steamcmd_output}" | head -n1 | sed 's/.*"name"[[:space:]]*"\([^"]*\)".*/\1/')
+    app_name=$(grep "\"name\"" "${steamcmd_output}" | head -n1 | sed 's/.*"name"[[:space:]]*"\([^"]*\)".*/\1/')
 fi
 
 # Create metadata files
-echo "${buildid}" > "${destination_dir}/buildid"
-echo "${app_id}" > "${destination_dir}/app_id"
-echo "${branch}" > "${destination_dir}/branch"
+echo "${buildid}" >"${destination_dir}/buildid"
+echo "${app_id}" >"${destination_dir}/app_id"
+echo "${branch}" >"${destination_dir}/branch"
 if [[ -n "${app_name}" ]]; then
-  echo "${app_name}" > "${destination_dir}/app_name"
+    echo "${app_name}" >"${destination_dir}/app_name"
 fi
 
 # Save raw SteamCMD output for debugging
@@ -70,22 +68,22 @@ cp "${steamcmd_output}" "${destination_dir}/steamcmd_output.txt"
 
 # Extract version timestamp if available
 timestamp=$(date +%s)
-echo "${timestamp}" > "${destination_dir}/timestamp"
+echo "${timestamp}" >"${destination_dir}/timestamp"
 
 # Create JSON metadata file
 jq -n \
-  --arg app_id "${app_id}" \
-  --arg app_name "${app_name}" \
-  --arg buildid "${buildid}" \
-  --arg branch "${branch}" \
-  --arg timestamp "${timestamp}" \
-  '{
+    --arg app_id "${app_id}" \
+    --arg app_name "${app_name}" \
+    --arg buildid "${buildid}" \
+    --arg branch "${branch}" \
+    --arg timestamp "${timestamp}" \
+    '{
     app_id: $app_id,
     app_name: $app_name,
     buildid: $buildid,
     branch: $branch,
     timestamp: ($timestamp | tonumber)
-  }' > "${destination_dir}/metadata.json"
+  }' >"${destination_dir}/metadata.json"
 
 echo "Metadata saved to ${destination_dir}" >&2
 
@@ -94,12 +92,12 @@ rm -f "${payload}" "${steamcmd_script}" "${steamcmd_output}"
 
 # Return version and metadata
 jq -n \
-  --arg buildid "${buildid}" \
-  --arg app_id "${app_id}" \
-  --arg app_name "${app_name}" \
-  --arg branch "${branch}" \
-  --arg timestamp "${timestamp}" \
-  '{
+    --arg buildid "${buildid}" \
+    --arg app_id "${app_id}" \
+    --arg app_name "${app_name}" \
+    --arg branch "${branch}" \
+    --arg timestamp "${timestamp}" \
+    '{
     version: {buildid: $buildid},
     metadata: [
       {name: "app_id", value: $app_id},

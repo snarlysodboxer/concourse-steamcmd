@@ -22,10 +22,7 @@ RUN echo steam steam/question select "I AGREE" | debconf-set-selections && \
 # Create symlink for easier access
 RUN ln -s /usr/games/steamcmd /usr/local/bin/steamcmd
 
-# Create non-root user for running SteamCMD
-RUN useradd -U steam -m --shell /usr/bin/bash
-
-# Copy resource scripts (this creates /opt/resource automatically)
+# Copy resource scripts
 COPY assets/ /opt/resource/
 RUN chmod +x /opt/resource/*
 
@@ -33,9 +30,5 @@ RUN chmod +x /opt/resource/*
 # (Concourse will override workdir during actual resource operations)
 WORKDIR /opt/resource
 
-# Initialize SteamCMD as steam user (download initial files)
-USER steam
+# Initialize SteamCMD (download initial files)
 RUN steamcmd +quit
-
-# Switch back to root for resource operations (needed for Concourse permissions)
-USER root
