@@ -29,10 +29,13 @@ RUN useradd -U steam -m --shell /usr/bin/bash
 COPY assets/ /opt/resource/
 RUN chmod +x /opt/resource/*
 
-# Set user and working directory for debugging convenience
+# Set working directory for debugging convenience
 # (Concourse will override workdir during actual resource operations)
-USER steam
 WORKDIR /opt/resource
 
-# Initialize SteamCMD (download initial files)
+# Initialize SteamCMD as steam user (download initial files)
+USER steam
 RUN steamcmd +quit
+
+# Switch back to root for resource operations (needed for Concourse permissions)
+USER root

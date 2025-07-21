@@ -45,9 +45,9 @@ EOF
 
 echo "Running SteamCMD to get app info..." >&2
 
-# Run SteamCMD and capture output
+# Run SteamCMD as steam user and capture output
 steamcmd_output=$(mktemp /tmp/steamcmd-output.XXXXXX)
-/usr/games/steamcmd +runscript "${steamcmd_script}" > "${steamcmd_output}" 2>&1 || true
+su - steam -c "steamcmd +runscript ${steamcmd_script}" > "${steamcmd_output}" 2>&1 || true
 
 # Extract build ID from SteamCMD output
 current_buildid=""

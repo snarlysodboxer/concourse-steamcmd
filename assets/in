@@ -25,8 +25,9 @@ fi
 
 echo "Fetching metadata for Steam app ${app_id}, build ${buildid}" >&2
 
-# Create destination directory if it doesn't exist
+# Create destination directory if it doesn't exist and ensure proper permissions
 mkdir -p "${destination_dir}"
+chmod 755 "${destination_dir}"
 
 # Prepare SteamCMD login arguments
 login_args=""
@@ -46,9 +47,9 @@ EOF
 
 echo "Running SteamCMD to get detailed app info..." >&2
 
-# Run SteamCMD and capture output
+# Run SteamCMD as steam user and capture output
 steamcmd_output=$(mktemp /tmp/steamcmd-output.XXXXXX)
-/usr/games/steamcmd +runscript "${steamcmd_script}" > "${steamcmd_output}" 2>&1 || true
+su - steam -c "steamcmd +runscript ${steamcmd_script}" > "${steamcmd_output}" 2>&1 || true
 
 # Extract app information
 app_name=""
